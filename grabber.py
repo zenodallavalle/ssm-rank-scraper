@@ -153,6 +153,30 @@ def prepare_data(tds):
     return row
 
 
+def parse_birthday(x):
+    """
+    Parse "cognome_nome" column in order to extract a datetime.date representation of the birthdate. If an error occurs None is returned
+    """
+    try:
+        string_date = x.rsplit('(', 1)[1].replace(')', '').strip()
+        datetime = dt.strptime(string_date, '%d/%m/%Y')
+        return d(datetime.year, datetime.month, datetime.day)
+    except Exception:
+        return
+
+
+def parse_specializzazione_sede(df):
+    """
+    Parse df['Note'] in order to extract specializzazione - sede combination (a tuple). If error occurs None is returned.
+    """
+    x = df['Note']
+    try:
+        specializzazione, sede = x.rsplit(',', 1)
+        return specializzazione.strip(), sede.strip()
+    except Exception:
+        return None, None
+
+
 def scan_page(
     session,
     year,
@@ -201,13 +225,7 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
         df = pd.concat([df for df in dfs if isinstance(df, pd.DataFrame)])
 
     # generate column birth from date within parenthesis
-    df['nascita'] = df['cognome_nome'].map(
-        lambda x: d.fromtimestamp(
-            dt.strptime(
-                x.rsplit('(', 1)[-1].replace(')', '').strip(), '%d/%m/%Y'
-            ).timestamp()
-        )
-    )
+    df['nascita'] = df['cognome_nome'].map(parse_birthday)
     df['cognome_nome'] = df['cognome_nome'].map(lambda x: x.rsplit('(', 1)[0].strip())
     df['Note'] = df['Note'].astype(str)
 
@@ -215,15 +233,17 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     df.sort_values(by=['#'], inplace=True)
 
     df.reset_index(drop=True, inplace=True)
+
     # reorder columns
     cols = list(df.columns)
     popped = cols.pop()
     cols.insert(2, popped)
     df = df[cols].copy()
-    df['Specializzazione'] = df['Note'].map(
-        lambda x: x.rsplit(',', 1)[0].strip() if x else ''
+
+    df[['Specializzazione', 'Sede']] = df.apply(
+        parse_specializzazione_sede, axis=1, result_type='expand'
     )
-    df['Sede'] = df['Note'].map(lambda x: x.rsplit(',', 1)[1].strip() if x else '')
+
     # rename index col "index"
     df.rename_axis(['index'], axis=1, inplace=True)
     return df
