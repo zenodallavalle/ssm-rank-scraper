@@ -42,9 +42,9 @@ _Per poter visualizzare la graduatoria è necessario possedere un account univer
 
 3. Edit `credentials_model.json` and rename it to `credentials.json`:
 
-   1. Edit email
+   1. Edit email with your universitaly account email
 
-   2. Edit password
+   2. Edit password with your universitaly account password
 
 4. Customize (if required)
 
