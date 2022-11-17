@@ -225,8 +225,8 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
         df = pd.concat([df for df in dfs if isinstance(df, pd.DataFrame)])
 
     # generate column birth from date within parenthesis
-    df['nascita'] = df['cognome_nome'].map(parse_birthday)
-    df['cognome_nome'] = df['cognome_nome'].map(lambda x: x.rsplit('(', 1)[0].strip())
+    df['Nascita'] = df['cognome_nome'].map(parse_birthday)
+    df['CognomeNome'] = df['cognome_nome'].map(lambda x: x.rsplit('(', 1)[0].strip())
     df['Note'] = df['Note'].astype(str)
 
     df['#'] = df['#'].astype(int)
@@ -234,15 +234,25 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
 
     df.reset_index(drop=True, inplace=True)
 
-    # reorder columns
-    cols = list(df.columns)
-    popped = cols.pop()
-    cols.insert(2, popped)
-    df = df[cols].copy()
-
     df[['Specializzazione', 'Sede']] = df.apply(
         parse_specializzazione_sede, axis=1, result_type='expand'
     )
+
+    cols = [
+        '#',
+        'CognomeNome',
+        'Nascita',
+        'Tot',
+        'Prova',
+        'Titoli',
+        'Stato',
+        'Contratto',
+        'Specializzazione',
+        'Sede',
+        'Note',
+    ]
+
+    df = df[cols]
 
     # rename index col "index"
     df.rename_axis(['index'], axis=1, inplace=True)
