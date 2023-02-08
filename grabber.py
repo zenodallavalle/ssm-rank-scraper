@@ -4,7 +4,6 @@ from multiprocessing import Pool, cpu_count
 import numpy as np
 from itertools import repeat
 from requests import Session
-from selenium import webdriver
 from warnings import warn
 import re
 from urllib.parse import urlparse, parse_qs
@@ -101,19 +100,14 @@ def get_authentication_link(email, password, year):
     This function get the authentication link to access the private page at ssm.cineca.it
     Authentication link is strictly related to your account, don't share it.
     '''
+    s = Session()
+    r = s.get('https://www.universitaly.it/index.php/auth')
     find_authentication_link = _initilize_find_authentication_link(year)
-    d = webdriver.Chrome()
-    d.get('https://www.universitaly.it/index.php/auth')
-    bs = BS(d.page_source, 'lxml')
-
+    bs = BS(r.content, 'lxml')
     url_form_submit = bs.find('form', {'id': 'kc-form-login'}).attrs['action']
 
     payload = {'username': email, 'password': password, 'credentialId': None}
 
-    s = Session()
-    for cookie in d.get_cookies():
-        s.cookies.set(**_convert_webdriver_cookie_to_session_cookie(cookie))
-    d.close()
     r = s.post(url_form_submit, data=payload)
     s.get('https://www.universitaly.it/index.php/auth')
     r = s.get('https://www.universitaly.it/index.php/dashboard-ssm')
