@@ -28,7 +28,7 @@ _Per poter visualizzare la graduatoria è necessario possedere un account univer
 
 ## Usage
 
-1. Create and activate virtual env
+1. Create and activate virtual env with python ≤ 3.10
 
    <code>python -m venv env</code>
 
