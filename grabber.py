@@ -5,6 +5,7 @@ import numpy as np
 from itertools import repeat
 from requests import Session
 from warnings import warn
+import emoji
 import re
 from urllib.parse import urlparse, parse_qs
 import pandas as pd
@@ -183,10 +184,21 @@ def prepare_data(tds):
             row[c] = value
         elif i == 6:
             span = tds[i].find('span')
-            if span:
+            if span is not None:
                 children = list(span.children)
                 row[c] = children[0].strip()
-                row['Contratto'] = children[1].text.strip().upper()
+                if len(children) == 1:
+                    row['Contratto'] = 'STAT'
+                else:
+                    contract = children[1].text.strip().upper()
+                    if (
+                        not contract
+                        or len(contract) == 1
+                        or emoji.emoji_count(contract)
+                    ):
+                        contract = children[1].attrs['title'].strip()
+                    row['Contratto'] = contract
+
             else:
                 row[c] = tds[i].text.strip()
         else:
@@ -244,6 +256,7 @@ def scan_page(
         tds = tr.findChildren('td')
         if len(tds) > 0:
             rows.append(prepare_data(tds))
+
     return pd.DataFrame(rows)
 
 
