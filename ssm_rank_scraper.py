@@ -11,7 +11,7 @@ import grabber
 from year_parser import parse_year_long
 
 
-YEAR = "2018"
+YEAR = "2022"
 COMPUTE_MIN_PTS = False
 
 SHEET_NAME = datetime.now().strftime(

@@ -2,6 +2,8 @@ credentials.json
 *.xlsx
 *.local
 
+.vscode/
+
 # MAC OS files
 .DS_Store
 
