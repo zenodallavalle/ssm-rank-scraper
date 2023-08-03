@@ -11,7 +11,7 @@ import grabber
 from year_parser import parse_year_long
 
 
-YEAR = "2022"
+YEAR = "2023"
 COMPUTE_MIN_PTS = False
 
 SHEET_NAME = datetime.now().strftime(
@@ -92,7 +92,7 @@ def scrape(
     authentication_link = load_credentials(year)
     workers = WORKERS or cpu_count()
     time_start = time.time()
-    print(f"Starting with {workers} processes...", end="")
+    print(f"Starting ({year}) with {workers} processes...", end="")
     try:
         rank_df = grabber.grab(
             year, authentication_link=authentication_link, workers=workers
