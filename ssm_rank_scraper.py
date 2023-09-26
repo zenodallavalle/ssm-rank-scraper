@@ -1,27 +1,29 @@
+import argparse
 import json
 from multiprocessing import cpu_count
 from datetime import datetime
 import numpy as np
 import openpyxl
 import os
+import sys
 import pandas as pd
 import time
+import re
 
 import grabber
 from year_parser import parse_year_long
 
 
-YEAR = "2023"
-COMPUTE_MIN_PTS = False
+DEFAULT_COMPUTE_MIN_PTS = True
 
-SHEET_NAME = datetime.now().strftime(
+DEFAULT_SHEET_NAME = datetime.now().strftime(
     "%Y-%m-%d-%H-%M-%S"
 )  # default is current year-month-day-hours-minutes-seconds
 
-SAVE = True
-SKIP_IF_EQUAL_TO_LAST = True
+DEFAULT_SAVE = True
+DEFAULT_SKIP_IF_EQUAL_TO_LAST = True
 
-WORKERS = None  # if workers = None processes used will be equal to number of cores, override if needed.
+DEFAULT_WORKERS = None  # if workers = None processes used will be equal to number of cores, override if needed.
 
 
 def load_credentials(year):
@@ -75,14 +77,16 @@ def save_df(df, filename, sheet_name):
 
 
 def scrape(
-    year=YEAR,
-    save=SAVE,
-    skip_if_equal_to_last=SKIP_IF_EQUAL_TO_LAST,
+    year,
+    save=DEFAULT_SAVE,
+    skip_if_equal_to_last=DEFAULT_SKIP_IF_EQUAL_TO_LAST,
     compute_min_pts=True,
-    rank_save_path=None,
-    min_pts_save_path=None,
-    sheet_name=SHEET_NAME,
+    rank_save_path="rank_{}.xlsx",
+    min_pts_save_path="min_pts_{}.xlsx",
+    sheet_name=DEFAULT_SHEET_NAME,
+    workers=DEFAULT_WORKERS,
 ):
+    workers = workers or cpu_count()
     if not "credentials.json" in os.listdir():
         print(
             "credentials.json not found in folder. This is necessary to read your email and password in order to sign-in in universitaly. Have you read README.md?"
@@ -90,7 +94,6 @@ def scrape(
         raise FileNotFoundError
 
     authentication_link = load_credentials(year)
-    workers = WORKERS or cpu_count()
     time_start = time.time()
     print(f"Starting ({year}) with {workers} processes...", end="")
     try:
@@ -116,7 +119,7 @@ def scrape(
                     ["Specializzazione", "Sede", "Contratto"],
                     as_index=False,
                 )
-                .aggregate({"#": max, "Tot": min})[
+                .aggregate({"#": "max", "Tot": "min"})[
                     ["Specializzazione", "Sede", "Contratto", "#", "Tot"]
                 ]
             )
@@ -128,10 +131,8 @@ def scrape(
 
     if save:
         print("Saving files:")
-        rank_save_path = rank_save_path or "rank_{}.xlsx".format(parse_year_long(year))
-        min_pts_save_path = min_pts_save_path or "min_pts_{}.xlsx".format(
-            parse_year_long(year)
-        )
+        rank_save_path = rank_save_path.format(parse_year_long(year))
+        min_pts_save_path = min_pts_save_path.format(parse_year_long(year))
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
             sheets = sorted(pd.ExcelFile(rank_save_path).sheet_names, reverse=True)
             last_sheet_name = sheets[0]
@@ -168,7 +169,89 @@ def scrape(
 
 
 def main():
-    scrape(YEAR, compute_min_pts=COMPUTE_MIN_PTS)
+    parser = argparse.ArgumentParser(
+        description="Download the latest SSM rank. More info here: https://github.com/zenodallavalle/ssm-rank-scraper",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "-Y",
+        "--years",
+        action="store",
+        dest="years_unsplitted",
+        required=True,
+        help="Specify download years (any non-digit character is a separator)",
+    )
+    parser.add_argument(
+        "--skip-min-pts",
+        action="store_const",
+        dest="compute_min_pts",
+        const=not DEFAULT_COMPUTE_MIN_PTS,
+        default=DEFAULT_COMPUTE_MIN_PTS,
+        help="Skip computation of minimum points",
+    )
+    parser.add_argument(
+        "--sheet-name",
+        action="store",
+        dest="sheet_name",
+        default=DEFAULT_SHEET_NAME,
+        help="Specify sheet name for excel output files",
+    )
+    parser.add_argument(
+        "--no-save",
+        action="store_const",
+        dest="save",
+        const=not DEFAULT_SAVE,
+        default=DEFAULT_SAVE,
+        help="Skip saving output files",
+    )
+    parser.add_argument(
+        "--no-skip",
+        action="store_const",
+        dest="skip_if_equal_to_last",
+        const=not DEFAULT_SKIP_IF_EQUAL_TO_LAST,
+        default=DEFAULT_SKIP_IF_EQUAL_TO_LAST,
+        help="Do not skip saving files if last sheet is equal to current",
+    )
+    parser.add_argument(
+        "-W",
+        "--workers",
+        action="store",
+        type=int,
+        dest="workers",
+        default=DEFAULT_WORKERS,
+        help="Specify number of workers (processes) to use for scraping, if None equal to cpu_count()",
+    )
+    parser.add_argument(
+        "-O",
+        "--output",
+        action="store",
+        dest="output",
+        default="rank_{}.xlsx",
+        help="Specify rank output file name. It will be formatted with year (.format(year)).",
+    )
+    parser.add_argument(
+        "--min-pts-output",
+        action="store",
+        dest="min_pts_output",
+        default="min_pts_{}.xlsx",
+        help="Specify min_pts output file name. It will be formatted with year (.format(year)).",
+    )
+    args = parser.parse_args()
+    config = vars(args)
+    config["years"] = re.split(r"\D+", config["years_unsplitted"])
+    del config["years_unsplitted"]
+
+    for year in config.get("years", []):
+        scrape(
+            year,
+            save=config["save"],
+            skip_if_equal_to_last=config["skip_if_equal_to_last"],
+            compute_min_pts=config["compute_min_pts"],
+            sheet_name=config["sheet_name"],
+            workers=config["workers"],
+            rank_save_path=config["output"],
+            min_pts_save_path=config["min_pts_output"],
+        )
 
 
 if __name__ == "__main__":

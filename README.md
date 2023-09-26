@@ -4,6 +4,7 @@
   - [Description](#description)
   - [Features](#features)
   - [Usage](#usage)
+  - [Help](#help)
   - [Advanced](#advanced)
   - [Tests](#tests)
 
@@ -47,13 +48,31 @@ _Per poter visualizzare la graduatoria è necessario possedere un account univer
 
    2. Edit password with your universitaly account password
 
-4. Customize (if required)
+4. Usage
 
-   1. Edit `ssm_rank_scraper.py`, particularly `YEAR` and `COMPUTE_MIN_PTS`.
+   <code>python ssm_rank_scraper.py [-h] -Y YEARS_UNSPLITTED [--skip-min-pts] [--sheet-name SHEET_NAME] [--no-save] [--no-skip] [-W WORKERS] [-O OUTPUT] [--min-pts-output MIN_PTS_OUTPUT]</code>
 
-5. Run
+## Help
 
-   <code>python ssm_rank_scraper.py</code>
+```
+Download the latest SSM rank. More info here: https://github.com/zenodallavalle/ssm-rank-scraper
+
+options:
+  -h, --help            show this help message and exit
+  -Y YEARS_UNSPLITTED, --years YEARS_UNSPLITTED
+                        Specify download years (any non-digit character is a separator) (default: None)
+  --skip-min-pts        Skip computation of minimum points (default: True)
+  --sheet-name SHEET_NAME
+                        Specify sheet name for excel output files (default: 2023-09-26-16-33-10)
+  --no-save             Skip saving output files (default: True)
+  --no-skip             Do not skip saving files if last sheet is equal to current (default: True)
+  -W WORKERS, --workers WORKERS
+                        Specify number of workers (processes) to use for scraping, if None equal to cpu_count() (default: None)
+  -O OUTPUT, --output OUTPUT
+                        Specify rank output file name. It will be formatted with year (.format(year)). (default: rank_{}.xlsx)
+  --min-pts-output MIN_PTS_OUTPUT
+                        Specify min_pts output file name. It will be formatted with year (.format(year)). (default: min_pts_{}.xlsx)
+```
 
 ## Advanced
 
