@@ -63,7 +63,7 @@ options:
                         Specify download years (any non-digit character is a separator) (default: None)
   --skip-min-pts        Skip computation of minimum points (default: True)
   --sheet-name SHEET_NAME
-                        Specify sheet name for excel output files (default: 2023-09-26-16-33-10)
+                        Specify sheet name for excel output files (default: 2023-09-26-17-30-23)
   --no-save             Skip saving output files (default: True)
   --no-skip             Do not skip saving files if last sheet is equal to current (default: True)
   -W WORKERS, --workers WORKERS
@@ -72,6 +72,8 @@ options:
                         Specify rank output file name. It will be formatted with year (.format(year)). (default: rank_{}.xlsx)
   --min-pts-output MIN_PTS_OUTPUT
                         Specify min_pts output file name. It will be formatted with year (.format(year)). (default: min_pts_{}.xlsx)
+  --trace-output TRACE_OUTPUT
+                        Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "". (default: trace_{}.log)
 ```
 
 ## Advanced
