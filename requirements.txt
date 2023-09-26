@@ -6,9 +6,9 @@ emoji==2.8.0
 et-xmlfile==1.1.0
 idna==3.4
 lxml==4.9.3
-numpy==1.26.0
+numpy==1.24.4
 openpyxl==3.1.2
-pandas==2.1.1
+pandas==2.0.3
 python-dateutil==2.8.2
 pytz==2023.3.post1
 requests==2.31.0
