@@ -161,7 +161,7 @@ def detect_limit(s, year, previdence_code):
     return max(map(_convert_option_text_to_integer, select.find_all("option")))
 
 
-def prepare_data(tds):
+def parse_data(tds):
     """
     Parse data for every row in the page.
     Return a dictionary containing columns as keys and values scraped from the page.
@@ -182,6 +182,9 @@ def prepare_data(tds):
                 value = span.text.strip()
             row[c] = value
         elif i == 6:
+            if len(tds) < 7:
+                row[c] = ""
+                continue
             span = tds[i].find("span")
             if span is not None:
                 children = list(span.children)
@@ -254,7 +257,7 @@ def scan_page(
     for tr in trs:
         tds = tr.findChildren("td")
         if len(tds) > 0:
-            rows.append(prepare_data(tds))
+            rows.append(parse_data(tds))
 
     return pd.DataFrame(rows)
 
@@ -291,9 +294,9 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     df["Note"] = df["Note"].astype(str)
 
     df["#"] = df["#"].astype(int)
-    df.sort_values(by=["#"], inplace=True)
+    df = df.sort_values(by=["#"])
 
-    df.reset_index(drop=True, inplace=True)
+    df = df.reset_index(drop=True)
 
     df[["Specializzazione", "Sede"]] = df.apply(
         parse_specializzazione_sede, axis=1, result_type="expand"
@@ -313,14 +316,12 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
         "Note",
     ]
     for col in cols:
-        if col in df.columns:
-            continue
-        df[col] = np.nan
+        if col not in df.columns:
+            df[col] = np.nan
 
     df = df[cols]
 
     # rename index col "index"
-    df.rename_axis(["index"], axis=1, inplace=True)
-    df.fillna(np.nan, inplace=True)
-    df.replace([np.nan, ""], [None, None], inplace=True)
+    df = df.rename_axis(["index"], axis=1)
+    df = df.replace([np.nan, ""], [None, None])
     return df
