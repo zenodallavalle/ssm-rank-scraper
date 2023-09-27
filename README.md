@@ -50,7 +50,7 @@ _Per poter visualizzare la graduatoria è necessario possedere un account univer
 
 4. Usage
 
-   <code>python ssm_rank_scraper.py [-h] -Y YEARS_UNSPLITTED [--skip-min-pts] [--sheet-name SHEET_NAME] [--no-save] [--no-skip] [-W WORKERS] [-O OUTPUT] [--min-pts-output MIN_PTS_OUTPUT]</code>
+   <code>usage: ssm_rank_scraper.py [-h] -Y YEARS_UNSPLITTED [--skip-min-pts] [--sheet-name SHEET_NAME] [--no-save] [--no-skip] [-W WORKERS] [-O OUTPUT] [--min-pts-output MIN_PTS_OUTPUT] [--trace-output TRACE_OUTPUT]</code>
 
 ## Help
 
@@ -86,4 +86,4 @@ If you need to somehow automate the process of downloading the ranking, import `
 
 ## Tests
 
-Although I haven't written unit tests for this library, I tested it for years 2018, 2019, 2020, 2021, 2022.
+Although I haven't written unit tests for this library, I tested it for years 2018, 2019, 2020, 2021, 2022, 2023.
