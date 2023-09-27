@@ -1,4 +1,5 @@
 import argparse
+from collections import namedtuple
 import json
 from multiprocessing import cpu_count
 from datetime import datetime
@@ -88,20 +89,25 @@ def scrape(
     sheet_name=DEFAULT_SHEET_NAME,
     workers=DEFAULT_WORKERS,
 ):
-    print("passed trace_path", trace_path)
+    dummy_file_instance = namedtuple("dummy_file_instance", ["write", "close"])
+
     if trace_path:
         trace_path = trace_path.format(parse_year_long(year))
         f = open(trace_path.format(parse_year_long(year)), "a")
+    else:
+        f = dummy_file_instance(
+            lambda *args, **kwargs: None, lambda *args, **kwargs: None
+        )
 
     workers = workers or cpu_count()
     if not "credentials.json" in os.listdir():
         print(
             "credentials.json not found in folder. This is necessary to read your email and password in order to sign-in in universitaly. Have you read README.md?"
         )
-        if trace_path:
-            f.write(
-                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - credentials.json not found in folder. This is necessary to read your email and password in order to sign-in in universitaly. Have you read README.md?\n"
-            )
+        f.write(
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - credentials.json not found in folder. This is necessary to read your email and password in order to sign-in in universitaly. Have you read README.md?\n"
+        )
+        f.close()
         raise FileNotFoundError
 
     authentication_link = load_credentials(year)
@@ -113,11 +119,10 @@ def scrape(
         )
     except Exception as e:
         print("")
-        if trace_path:
-            f.write(
-                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error occurred while scraping year {parse_year_long(year)} {str(e)}. Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
-            )
-            f.close()
+        f.write(
+            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error occurred while scraping year {parse_year_long(year)} {str(e)}. Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
+        )
+        f.close()
         raise e
     time_end = time.time()
     print(
@@ -126,10 +131,9 @@ def scrape(
             len(rank_df),
         )
     )
-    if trace_path:
-        f.write(
-            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Successfully scraped {len(rank_df)} entries of year {parse_year_long(year)} in {time_end - time_start:.2f} seconds. Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
-        )
+    f.write(
+        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Successfully scraped {len(rank_df)} entries of year {parse_year_long(year)} in {time_end - time_start:.2f} seconds. Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
+    )
     min_pts_df = None
     if compute_min_pts:
         try:
@@ -149,10 +153,9 @@ def scrape(
             print("")
             print("Error occurred while computing minimum points, skipping...")
             print(e)
-            if trace_path:
-                f.write(
-                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error occurred while computing minimum points {str(e)}, skipping... Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
-                )
+            f.write(
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error occurred while computing minimum points {str(e)}, skipping... Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
+            )
 
     if save:
         print("Saving files:")
@@ -166,24 +169,22 @@ def scrape(
             if not equal:
                 save_df(rank_df, rank_save_path, sheet_name)
                 print(f"Saved {rank_save_path}>{sheet_name}.")
-                if trace_path:
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
-                    )
-                print(
-                    f"Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now."
-                )
-                if trace_path:
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now.\n"
-                    )
-        else:
-            save_df(rank_df, rank_save_path, sheet_name)
-            print(f"Saved {rank_save_path}>{sheet_name}.")
-            if trace_path:
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
                 )
+            else:
+                print(
+                    f"Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now."
+                )
+                f.write(
+                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now.\n"
+                )
+        else:
+            save_df(rank_df, rank_save_path, sheet_name)
+            print(f"Saved {rank_save_path}>{sheet_name}.")
+            f.write(
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
+            )
         if min_pts_df is not None:
             if skip_if_equal_to_last and os.path.exists(min_pts_save_path):
                 sheets = sorted(
@@ -195,27 +196,26 @@ def scrape(
                 if not equal:
                     save_df(min_pts_df, min_pts_save_path, sheet_name)
                     print(f"Saved {min_pts_save_path}>{sheet_name}.")
-                    if trace_path:
-                        f.write(
-                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
-                        )
+
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
+                    )
                 else:
                     print(
                         f"Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now."
                     )
-                    if trace_path:
-                        f.write(
-                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now.\n"
-                        )
+
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now.\n"
+                    )
             else:
                 save_df(min_pts_df, min_pts_save_path, sheet_name)
                 print(f"Saved {min_pts_save_path}>{sheet_name}.")
-                if trace_path:
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
-                    )
-    if trace_path:
-        f.close()
+
+                f.write(
+                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
+                )
+    f.close()
 
 
 def main():
