@@ -17,6 +17,7 @@ from year_parser import parse_year_long
 
 
 DEFAULT_COMPUTE_MIN_PTS = True
+DEFAULT_COMPUTE_DOWNLOAD_CONTRACTS = True
 
 DEFAULT_SHEET_NAME = datetime.now().strftime(
     "%Y-%m-%d-%H-%M-%S"
@@ -84,11 +85,14 @@ def scrape(
     skip_if_equal_to_last=DEFAULT_SKIP_IF_EQUAL_TO_LAST,
     trace_path="trace_{}.log",
     compute_min_pts=True,
+    download_number_of_contracts=True,
     rank_save_path="rank_{}.xlsx",
     min_pts_save_path="min_pts_{}.xlsx",
+    contracts_save_path="contracts_{}.xlsx",
     sheet_name=DEFAULT_SHEET_NAME,
     workers=DEFAULT_WORKERS,
 ):
+    year = parse_year_long(year)
     dummy_file_instance = namedtuple("dummy_file_instance", ["write", "close"])
 
     if trace_path:
@@ -156,11 +160,27 @@ def scrape(
             f.write(
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error occurred while computing minimum points {str(e)}, skipping... Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
             )
+    number_of_contracts_df = None
+    if download_number_of_contracts:
+        try:
+            print("Downloading number of contracts...", end="")
+            number_of_contracts_df = grabber.download_number_of_contracts(
+                year=year, authentication_link=authentication_link
+            )
+            print("Done.")
+        except Exception as e:
+            print("")
+            print("Error occurred while downloading number of contracts, skipping...")
+            print(e)
+            f.write(
+                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error occurred while downloading number of contracts {str(e)}, skipping... Params: [save={save}, skip_if_equal_to_last={skip_if_equal_to_last}, compute_min_pts={compute_min_pts}, rank_save_path={rank_save_path}, min_pts_save_path={min_pts_save_path}, sheet_name={sheet_name}, workers={workers}]\n"
+            )
 
     if save:
         print("Saving files:")
         rank_save_path = rank_save_path.format(parse_year_long(year))
         min_pts_save_path = min_pts_save_path.format(parse_year_long(year))
+        contracts_save_path = contracts_save_path.format(parse_year_long(year))
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
             sheets = sorted(pd.ExcelFile(rank_save_path).sheet_names, reverse=True)
             last_sheet_name = sheets[0]
@@ -215,6 +235,36 @@ def scrape(
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
                 )
+        if number_of_contracts_df is not None:
+            if skip_if_equal_to_last and os.path.exists(contracts_save_path):
+                sheets = sorted(
+                    pd.ExcelFile(contracts_save_path).sheet_names, reverse=True
+                )
+                last_sheet_name = sheets[0]
+                last_df = pd.read_excel(contracts_save_path, sheet_name=last_sheet_name)
+                equal = dfs_are_equal(number_of_contracts_df, last_df)
+                if not equal:
+                    save_df(number_of_contracts_df, contracts_save_path, sheet_name)
+                    print(f"Saved {contracts_save_path}>{sheet_name}.")
+
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {contracts_save_path}>{sheet_name}.\n"
+                    )
+                else:
+                    print(
+                        f"Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now."
+                    )
+
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now.\n"
+                    )
+            else:
+                save_df(number_of_contracts_df, contracts_save_path, sheet_name)
+                print(f"Saved {contracts_save_path}>{sheet_name}.")
+
+                f.write(
+                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {contracts_save_path}>{sheet_name}.\n"
+                )
     f.close()
 
 
@@ -238,6 +288,14 @@ def main():
         const=not DEFAULT_COMPUTE_MIN_PTS,
         default=DEFAULT_COMPUTE_MIN_PTS,
         help="Skip computation of minimum points",
+    )
+    parser.add_argument(
+        "--skip-number-of-contracts",
+        action="store_const",
+        dest="download_number_of_contracts",
+        const=not DEFAULT_COMPUTE_DOWNLOAD_CONTRACTS,
+        default=DEFAULT_COMPUTE_DOWNLOAD_CONTRACTS,
+        help="Skip download of number of contracts",
     )
     parser.add_argument(
         "--sheet-name",
@@ -286,7 +344,13 @@ def main():
         default="min_pts_{}.xlsx",
         help="Specify min_pts output file name. It will be formatted with year (.format(year)).",
     )
-
+    parser.add_argument(
+        "--number-of-contract-output",
+        action="store",
+        dest="contracts_save_path",
+        default="contracts_{}.xlsx",
+        help="Specify number_of_contracts output file name. It will be formatted with year (.format(year)).",
+    )
     parser.add_argument(
         "--trace-output",
         action="store",
@@ -304,10 +368,12 @@ def main():
             save=config["save"],
             skip_if_equal_to_last=config["skip_if_equal_to_last"],
             compute_min_pts=config["compute_min_pts"],
+            download_number_of_contracts=config["download_number_of_contracts"],
             sheet_name=config["sheet_name"],
             workers=config["workers"],
             rank_save_path=config["output"],
             min_pts_save_path=config["min_pts_output"],
+            contracts_save_path=config["contracts_save_path"],
             trace_path=config["trace_output"],
         )
 

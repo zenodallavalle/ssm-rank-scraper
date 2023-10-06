@@ -325,3 +325,58 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     df = df.rename_axis(["index"], axis=1)
     df = df.replace([np.nan, ""], [None, None])
     return df
+
+
+def _get_number_of_contract_url(year, previdence_code):
+    short_year = parse_year_short(year)
+    long_year = parse_year_long(year)
+    return f"https://ssm.cineca.it/ssm{short_year}_riepilogo.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
+
+
+def download_number_of_contracts(
+    year, email=None, password=None, authentication_link=None
+):
+    # Get a session authenticated to access the ranking
+    if authentication_link is None:
+        warn("Providing authentication link can make the process ~5s slower!")
+        authentication_link = get_authentication_link(email, password, year)
+    previdence_code = _extract_previdence_code_from_authentication_link(
+        authentication_link
+    )
+    s = authenticate(authentication_link)
+    _ = detect_limit(s, year, previdence_code)  # Make visit rank, so cookies are set
+    r = s.get(_get_number_of_contract_url(year=year, previdence_code=previdence_code))
+    assert r.status_code == 200
+
+    # Parse the page
+    bs = BS(r.content, "lxml")
+    data = {}
+    columns_dict = {}
+
+    table = bs.find("table")
+    if table is None:
+        raise ValueError("Table not found in page")
+    trs = table.find_all("tr")
+    if trs:
+        for tr in trs:
+            ths = tr.find_all("th")
+            tds = tr.find_all("td")
+            _columns = ths or tds
+            if not _columns:
+                continue
+            if not data:
+                data = dict([(i, []) for i in range(len(_columns))])
+            if ths:
+                for i, th in enumerate(ths):
+                    columns_dict[i] = th.text.strip().title()
+            if tds:
+                for i, td in enumerate(tds):
+                    if i == len(tds) - 1:
+                        data[i].append(int(td.text.strip()))
+                    else:
+                        data[i].append(td.text.strip())
+
+    df = pd.DataFrame(data)
+    df = df.rename(columns=columns_dict)
+    df = df.replace([""], np.nan)
+    return df

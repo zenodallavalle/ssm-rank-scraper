@@ -10,11 +10,11 @@
 
 ## Description
 
-A simple and **quick** python script to scrape SSM ranking in MS Excel format that can also compute minimum points required for every combination of residency, place and type of contract.
+A simple and **quick** python script to scrape SSM ranking in MS Excel format that can also compute minimum points required and download the number of contracts for each combination of residency, place and type of contract.
 
 _An universitaly account is required. You also need to be signed-up for the SSM test of the year you wish to download the ranking._
 
-Un semplice e **rapido** script in python per scaricare la graduatoria SSM in formato MS Excel che può anche calcolare i punteggi minimi per accedere a ogni combinazione di specializzazione, sede e tipo di contratto.
+Un semplice e **rapido** script in python per scaricare la graduatoria SSM in formato MS Excel che può anche calcolare i punteggi minimi per accedere e scaricare il numero di contratti disponibili per ogni combinazione di specializzazione, sede e tipo di contratto.
 
 _Per poter visualizzare la graduatoria è necessario possedere un account universitaly ed essere iscritti al concorso SSM dell'anno di cui si desidera scaricare la graduatoria._
 
@@ -23,6 +23,7 @@ _Per poter visualizzare la graduatoria è necessario possedere un account univer
 - **Pretty fast** (~6 seconds on MacBook Pro M1-pro);
 - **Multiprocess-enabled** (default is number of processes = number of cores);
 - Length of ranking is dinamically determinated;
+- Download also the number of contracts available for each combination of residency, place and type of contract;
 - Don't need selenium webdriver;
 - Relatively light dependancies;
 - Can compute minimum points per combination of residency, place and type of contract;
@@ -62,8 +63,10 @@ options:
   -Y YEARS_UNSPLITTED, --years YEARS_UNSPLITTED
                         Specify download years (any non-digit character is a separator) (default: None)
   --skip-min-pts        Skip computation of minimum points (default: True)
+  --skip-number-of-contracts
+                        Skip download of number of contracts (default: True)
   --sheet-name SHEET_NAME
-                        Specify sheet name for excel output files (default: 2023-09-26-17-30-23)
+                        Specify sheet name for excel output files (default: 2023-10-06-15-40-24)
   --no-save             Skip saving output files (default: True)
   --no-skip             Do not skip saving files if last sheet is equal to current (default: True)
   -W WORKERS, --workers WORKERS
@@ -72,6 +75,8 @@ options:
                         Specify rank output file name. It will be formatted with year (.format(year)). (default: rank_{}.xlsx)
   --min-pts-output MIN_PTS_OUTPUT
                         Specify min_pts output file name. It will be formatted with year (.format(year)). (default: min_pts_{}.xlsx)
+  --number-of-contract-output CONTRACTS_SAVE_PATH
+                        Specify number_of_contracts output file name. It will be formatted with year (.format(year)). (default: contracts_{}.xlsx)
   --trace-output TRACE_OUTPUT
                         Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "". (default: trace_{}.log)
 ```
