@@ -344,7 +344,6 @@ def download_number_of_contracts(
         authentication_link
     )
     s = authenticate(authentication_link)
-    _ = detect_limit(s, year, previdence_code)  # Make visit rank, so cookies are set
     r = s.get(_get_number_of_contract_url(year=year, previdence_code=previdence_code))
     assert r.status_code == 200
 
