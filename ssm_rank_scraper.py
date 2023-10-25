@@ -29,6 +29,26 @@ DEFAULT_SKIP_IF_EQUAL_TO_LAST = True
 DEFAULT_WORKERS = None  # if workers = None processes used will be equal to number of cores, override if needed.
 
 
+def divide_directory_and_path(path):
+    path = re.sub(r"^(/|\\)", "", path)  # Remove leading slash or backslash
+    # path = re.sub(r'(/|\\)$', '', path) # Remove trailing slash or backslash
+    directory = os.path.dirname(path)  # Get the directory
+    folders = [
+        folder for folder in re.split(r"/|\\", directory) if folder
+    ]  # Split the directory into folders, remove empty strings
+    directory = os.path.join(*folders)  # Rejoin with os.path.join
+    file = os.path.basename(path)
+    if not file:
+        raise ValueError(f"The path {path} does not point to a file")
+    return directory, file
+
+
+def construct_path(path):
+    folder, path = divide_directory_and_path(path)
+    os.makedirs(folder, exist_ok=True)
+    return os.path.join(folder, path)
+
+
 def load_credentials(year):
     with open("credentials.json", "r") as f:
         cred = json.load(f)
@@ -96,7 +116,7 @@ def scrape(
     dummy_file_instance = namedtuple("dummy_file_instance", ["write", "close"])
 
     if trace_path:
-        trace_path = trace_path.format(parse_year_long(year))
+        trace_path = construct_path(trace_path.format(parse_year_long(year)))
         f = open(trace_path.format(parse_year_long(year)), "a")
     else:
         f = dummy_file_instance(
@@ -178,9 +198,13 @@ def scrape(
 
     if save:
         print("Saving files:")
-        rank_save_path = rank_save_path.format(parse_year_long(year))
-        min_pts_save_path = min_pts_save_path.format(parse_year_long(year))
-        contracts_save_path = contracts_save_path.format(parse_year_long(year))
+        rank_save_path = construct_path(rank_save_path.format(parse_year_long(year)))
+        min_pts_save_path = construct_path(
+            min_pts_save_path.format(parse_year_long(year))
+        )
+        contracts_save_path = construct_path(
+            contracts_save_path.format(parse_year_long(year))
+        )
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
             sheets = sorted(pd.ExcelFile(rank_save_path).sheet_names, reverse=True)
             last_sheet_name = sheets[0]
