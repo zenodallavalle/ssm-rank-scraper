@@ -1,8 +1,11 @@
-credentials.json
-*.xlsx
 *.local
-
 .vscode/
+
+credentials.json
+data/
+*.xlsx
+logs/
+# *.logs already ignored by django below
 
 # MAC OS files
 .DS_Store

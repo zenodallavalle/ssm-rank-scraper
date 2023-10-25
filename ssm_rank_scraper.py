@@ -83,12 +83,12 @@ def scrape(
     year,
     save=DEFAULT_SAVE,
     skip_if_equal_to_last=DEFAULT_SKIP_IF_EQUAL_TO_LAST,
-    trace_path="trace_{}.log",
+    trace_path="logs/trace_{}.log",
     compute_min_pts=True,
     download_number_of_contracts=True,
-    rank_save_path="rank_{}.xlsx",
-    min_pts_save_path="min_pts_{}.xlsx",
-    contracts_save_path="contracts_{}.xlsx",
+    rank_save_path="data/rank_{}.xlsx",
+    min_pts_save_path="data/min_pts_{}.xlsx",
+    contracts_save_path="data/contracts_{}.xlsx",
     sheet_name=DEFAULT_SHEET_NAME,
     workers=DEFAULT_WORKERS,
 ):
@@ -334,28 +334,28 @@ def main():
         "--output",
         action="store",
         dest="output",
-        default="rank_{}.xlsx",
+        default="data/rank_{}.xlsx",
         help="Specify rank output file name. It will be formatted with year (.format(year)).",
     )
     parser.add_argument(
         "--min-pts-output",
         action="store",
         dest="min_pts_output",
-        default="min_pts_{}.xlsx",
+        default="data/min_pts_{}.xlsx",
         help="Specify min_pts output file name. It will be formatted with year (.format(year)).",
     )
     parser.add_argument(
         "--number-of-contract-output",
         action="store",
         dest="contracts_save_path",
-        default="contracts_{}.xlsx",
+        default="data/contracts_{}.xlsx",
         help="Specify number_of_contracts output file name. It will be formatted with year (.format(year)).",
     )
     parser.add_argument(
         "--trace-output",
         action="store",
         dest="trace_output",
-        default="trace_{}.log",
+        default="logs/trace_{}.log",
         help='Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "".',
     )
     args = parser.parse_args()

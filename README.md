@@ -72,13 +72,13 @@ options:
   -W WORKERS, --workers WORKERS
                         Specify number of workers (processes) to use for scraping, if None equal to cpu_count() (default: None)
   -O OUTPUT, --output OUTPUT
-                        Specify rank output file name. It will be formatted with year (.format(year)). (default: rank_{}.xlsx)
+                        Specify rank output file name. It will be formatted with year (.format(year)). (default: data/rank_{}.xlsx)
   --min-pts-output MIN_PTS_OUTPUT
-                        Specify min_pts output file name. It will be formatted with year (.format(year)). (default: min_pts_{}.xlsx)
+                        Specify min_pts output file name. It will be formatted with year (.format(year)). (default: data/min_pts_{}.xlsx)
   --number-of-contract-output CONTRACTS_SAVE_PATH
-                        Specify number_of_contracts output file name. It will be formatted with year (.format(year)). (default: contracts_{}.xlsx)
+                        Specify number_of_contracts output file name. It will be formatted with year (.format(year)). (default: data/contracts_{}.xlsx)
   --trace-output TRACE_OUTPUT
-                        Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "". (default: trace_{}.log)
+                        Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "". (default: logs/trace_{}.log)
 ```
 
 ## Advanced
