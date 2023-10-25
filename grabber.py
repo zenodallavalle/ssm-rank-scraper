@@ -32,22 +32,6 @@ class AuthenticationLinkNotFound(IndexError):
         )
 
 
-def _convert_webdriver_cookie_to_session_cookie(webdriver_cookie):
-    ret = dict(webdriver_cookie)
-    rest = {}
-    if "expiry" in ret:
-        ret["expires"] = ret.pop("expiry")
-    if "httpOnly" in ret:
-        httpO = ret.pop("httpOnly")
-        rest["httpOnly"] = httpO
-    if "sameSite" in ret:
-        sameSite = ret.pop("sameSite")
-        rest["sameSite"] = sameSite
-    if len(rest):
-        ret["rest"] = rest
-    return ret
-
-
 def _initilize_find_authentication_link(year):
     long_year = parse_year_long(year)
 
@@ -62,6 +46,7 @@ def _initilize_find_authentication_link(year):
     return find_authentication_link
 
 
+# # THIS WAS FOR V1
 # def get_authentication_link(email, password, year):
 #     '''
 #     This function get the authentication link to access the private page at ssm.cineca.it
@@ -95,14 +80,36 @@ def _initilize_find_authentication_link(year):
 #         raise AuthenticationLinkNotFound()
 #     return authentication_link.attrs['href']
 
+# # THIS WAS FOR V2
+# def get_authentication_link(email, password, year):
+#     """
+#     This function get the authentication link to access the private page at ssm.cineca.it
+#     Authentication link is strictly related to your account, don't share it.
+#     """
+#     s = Session()
+#     r = s.get("https://www.universitaly.it/index.php/auth")
+#     find_authentication_link = _initilize_find_authentication_link(year)
+#     bs = BS(r.content, "lxml")
+#     url_form_submit = bs.find("form", {"id": "kc-form-login"}).attrs["action"]
 
+#     payload = {"username": email, "password": password, "credentialId": None}
+
+#     r = s.post(url_form_submit, data=payload)
+#     s.get("https://www.universitaly.it/index.php/auth")
+#     r = s.get("https://www.universitaly.it/index.php/dashboard-ssm")
+#     bs = BS(r.content, "lxml")
+#     authentication_link = bs.find(find_authentication_link)
+#     return authentication_link.attrs["href"]
+
+
+# THIS IS THE ACTUAL V3
 def get_authentication_link(email, password, year):
     """
     This function get the authentication link to access the private page at ssm.cineca.it
     Authentication link is strictly related to your account, don't share it.
     """
     s = Session()
-    r = s.get("https://www.universitaly.it/index.php/auth")
+    r = s.get("https://universitaly-private.cineca.it/index.php/auth")
     find_authentication_link = _initilize_find_authentication_link(year)
     bs = BS(r.content, "lxml")
     url_form_submit = bs.find("form", {"id": "kc-form-login"}).attrs["action"]
@@ -110,8 +117,9 @@ def get_authentication_link(email, password, year):
     payload = {"username": email, "password": password, "credentialId": None}
 
     r = s.post(url_form_submit, data=payload)
-    s.get("https://www.universitaly.it/index.php/auth")
-    r = s.get("https://www.universitaly.it/index.php/dashboard-ssm")
+    if "Ciao" not in r.text:
+        raise ValueError("Wrong credentials")
+    r = s.get("https://universitaly-private.cineca.it/index.php/dashboard-ssm")
     bs = BS(r.content, "lxml")
     authentication_link = bs.find(find_authentication_link)
     return authentication_link.attrs["href"]
