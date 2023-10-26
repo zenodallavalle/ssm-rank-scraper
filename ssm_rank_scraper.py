@@ -3,7 +3,6 @@ from collections import namedtuple
 import json
 from multiprocessing import cpu_count
 from datetime import datetime
-from unittest.mock import DEFAULT
 import zipfile
 import numpy as np
 import openpyxl
@@ -242,11 +241,6 @@ def scrape(
         contracts_save_path = construct_path(
             contracts_save_path.format(parse_year_long(year))
         )
-        if backup:
-            esit = make_backup_xlsx(rank_save_path)
-            if isinstance(esit, str):
-                print(esit)
-                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
             try:
                 # The file exists
@@ -255,6 +249,13 @@ def scrape(
                 last_df = pd.read_excel(rank_save_path, sheet_name=last_sheet_name)
                 equal = dfs_are_equal(rank_df, last_df)
                 if not equal:
+                    if backup:
+                        esit = make_backup_xlsx(rank_save_path)
+                        if isinstance(esit, str):
+                            print(esit)
+                            f.write(
+                                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                            )
                     save_df(rank_df, rank_save_path, sheet_name, mode="a")
                     print(f"Saved {rank_save_path}>{sheet_name}.")
                     f.write(
@@ -272,25 +273,30 @@ def scrape(
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
                 )
+                if backup:
+                    esit = make_backup_xlsx(rank_save_path)
+                    if isinstance(esit, str):
+                        print(esit)
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
                 save_df(rank_df, rank_save_path, sheet_name, mode="w")
                 print(f"Saved {rank_save_path}>{sheet_name}.")
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
                 )
         else:
+            if backup:
+                esit = make_backup_xlsx(rank_save_path)
+                if isinstance(esit, str):
+                    print(esit)
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                    )
             save_df(rank_df, rank_save_path, sheet_name, mode="w")
             print(f"Saved {rank_save_path}>{sheet_name}.")
             f.write(
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
             )
         if min_pts_df is not None:
-            if min_pts_df is not None:
-                esit = make_backup_xlsx(min_pts_save_path)
-                if isinstance(esit, str):
-                    print(esit)
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
-                    )
             if skip_if_equal_to_last and os.path.exists(min_pts_save_path):
                 try:
                     sheets = sorted(
@@ -302,6 +308,13 @@ def scrape(
                     )
                     equal = dfs_are_equal(min_pts_df, last_df)
                     if not equal:
+                        if backup:
+                            esit = make_backup_xlsx(min_pts_save_path)
+                            if isinstance(esit, str):
+                                print(esit)
+                                f.write(
+                                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                                )
                         save_df(min_pts_df, min_pts_save_path, sheet_name, mode="a")
                         print(f"Saved {min_pts_save_path}>{sheet_name}.")
 
@@ -321,25 +334,32 @@ def scrape(
                     f.write(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
                     )
+                    if backup:
+                        esit = make_backup_xlsx(min_pts_save_path)
+                        if isinstance(esit, str):
+                            print(esit)
+                            f.write(
+                                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                            )
                     save_df(min_pts_df, min_pts_save_path, sheet_name, mode="w")
                     print(f"Saved {min_pts_save_path}>{sheet_name}.")
                     f.write(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
                     )
             else:
+                if backup:
+                    esit = make_backup_xlsx(min_pts_save_path)
+                    if isinstance(esit, str):
+                        print(esit)
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                        )
                 save_df(min_pts_df, min_pts_save_path, sheet_name, mode="w")
                 print(f"Saved {min_pts_save_path}>{sheet_name}.")
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
                 )
         if number_of_contracts_df is not None:
-            if number_of_contracts_df is not None:
-                esit = make_backup_xlsx(contracts_save_path)
-                if isinstance(esit, str):
-                    print(esit)
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
-                    )
             if skip_if_equal_to_last and os.path.exists(contracts_save_path):
                 try:
                     sheets = sorted(
@@ -351,6 +371,13 @@ def scrape(
                     )
                     equal = dfs_are_equal(number_of_contracts_df, last_df)
                     if not equal:
+                        if backup:
+                            esit = make_backup_xlsx(contracts_save_path)
+                            if isinstance(esit, str):
+                                print(esit)
+                                f.write(
+                                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                                )
                         save_df(
                             number_of_contracts_df,
                             contracts_save_path,
@@ -375,6 +402,13 @@ def scrape(
                     f.write(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
                     )
+                    if backup:
+                        esit = make_backup_xlsx(contracts_save_path)
+                        if isinstance(esit, str):
+                            print(esit)
+                            f.write(
+                                f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                            )
                     save_df(
                         number_of_contracts_df,
                         contracts_save_path,
@@ -386,6 +420,13 @@ def scrape(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {contracts_save_path}>{sheet_name}.\n"
                     )
             else:
+                if backup:
+                    esit = make_backup_xlsx(contracts_save_path)
+                    if isinstance(esit, str):
+                        print(esit)
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                        )
                 save_df(
                     number_of_contracts_df, contracts_save_path, sheet_name, mode="w"
                 )
