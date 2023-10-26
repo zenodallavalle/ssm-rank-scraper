@@ -213,7 +213,7 @@ def parse_data(tds, year):
                 children = list(span.children)
                 text = children[0].strip()
                 row[c] = text
-                type_of_c = c.split("_")[0]
+                type_of_c = c.split("_", 1)[-1]
                 if len(children) == 1:
                     row[f"Contratto_{type_of_c}"] = "STAT"
                 else:
@@ -358,7 +358,7 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
             "Contratto_sessione_straordinaria",
             "Specializzazione_sessione_straordinaria",
             "Sede_sessione_straordinaria",
-            "Contratto_sessione_immatricolazione",
+            "Contratto_immatricolazione",
             "Specializzazione_immatricolazione",
             "Sede_immatricolazione",
             "Note_sessione_straordinaria",
@@ -382,17 +382,24 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
             df["Note_immatricolazione"]
             .astype(str)
             .str.replace(
-                "Medicina d'emergenza-urgenza", "Medicina d'emergenza$urgenza"
+                "Medicina d'emergenza-urgenza",
+                "Medicina d'emergenza$urgenza",
+                regex=False,
             )  # Replace - in specializations with $ to avoid splitting, remember to add new specializations with - here
-            .str.replace("Chirurgia maxillo-facciale", "Chirurgia maxillo$facciale")
-            .str.split("-", n=1, expand=True)
+            .str.replace(
+                "Chirurgia maxillo-facciale", "Chirurgia maxillo$facciale", regex=False
+            )
+            .str.split("-", n=1, expand=True, regex=False)
         )
         df["Specializzazione_immatricolazione"] = (
-            df["Specializzazione_immatricolazione"].str.replace("$", "-").str.strip()
+            df["Specializzazione_immatricolazione"]
+            .str.replace("$", "-", regex=False)
+            .str.strip()
         )
         df["Sede_immatricolazione"] = df["Sede_immatricolazione"].str.strip()
     if exceptions:
         cols.insert(1, "Exception")
+
     for col in cols:
         if col not in df.columns:
             df[col] = np.nan

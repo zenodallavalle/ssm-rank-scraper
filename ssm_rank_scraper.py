@@ -200,7 +200,7 @@ def scrape(
                 sede_col = "Sede"
                 contratto_col = "Contratto"
             min_pts_df = (
-                rank_df[rank_df["Specializzazione"].astype(bool)]
+                rank_df[rank_df[spec_col].astype(bool)]
                 .groupby(
                     [spec_col, sede_col, contratto_col],
                     as_index=False,
@@ -244,8 +244,9 @@ def scrape(
         )
         if backup:
             esit = make_backup_xlsx(rank_save_path)
-            print(esit)
-            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
+            if isinstance(esit, str):
+                print(esit)
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
             try:
                 # The file exists
@@ -285,8 +286,11 @@ def scrape(
         if min_pts_df is not None:
             if min_pts_df is not None:
                 esit = make_backup_xlsx(min_pts_save_path)
-                print(esit)
-                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
+                if isinstance(esit, str):
+                    print(esit)
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                    )
             if skip_if_equal_to_last and os.path.exists(min_pts_save_path):
                 try:
                     sheets = sorted(
@@ -331,8 +335,11 @@ def scrape(
         if number_of_contracts_df is not None:
             if number_of_contracts_df is not None:
                 esit = make_backup_xlsx(contracts_save_path)
-                print(esit)
-                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
+                if isinstance(esit, str):
+                    print(esit)
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                    )
             if skip_if_equal_to_last and os.path.exists(contracts_save_path):
                 try:
                     sheets = sorted(
