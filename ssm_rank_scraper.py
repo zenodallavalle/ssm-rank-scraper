@@ -187,14 +187,26 @@ def scrape(
     if compute_min_pts:
         try:
             print("Computing min_pts...", end="")
+            if (
+                "Specializzazione_sessione_straordinaria" in rank_df.columns
+                and "Sede_sessione_straordinaria" in rank_df.columns
+                and "Contratto_sessione_straordinaria" in rank_df.columns
+            ):
+                spec_col = "Specializzazione_sessione_straordinaria"
+                sede_col = "Sede_sessione_straordinaria"
+                contratto_col = "Contratto_sessione_straordinaria"
+            else:
+                spec_col = "Specializzazione"
+                sede_col = "Sede"
+                contratto_col = "Contratto"
             min_pts_df = (
                 rank_df[rank_df["Specializzazione"].astype(bool)]
                 .groupby(
-                    ["Specializzazione", "Sede", "Contratto"],
+                    [spec_col, sede_col, contratto_col],
                     as_index=False,
                 )
                 .aggregate({"#": "max", "Tot": "min"})[
-                    ["Specializzazione", "Sede", "Contratto", "#", "Tot"]
+                    [spec_col, sede_col, contratto_col, "#", "Tot"]
                 ]
             )
             print("Done.")
