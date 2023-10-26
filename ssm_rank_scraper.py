@@ -4,6 +4,7 @@ import json
 from multiprocessing import cpu_count
 from datetime import datetime
 from unittest.mock import DEFAULT
+import zipfile
 import numpy as np
 import openpyxl
 import os
@@ -19,6 +20,8 @@ from year_parser import parse_year_long
 DEFAULT_COMPUTE_MIN_PTS = True
 DEFAULT_COMPUTE_DOWNLOAD_CONTRACTS = True
 
+DEFAULT_BACKUP_FILES = True
+
 DEFAULT_SHEET_NAME = datetime.now().strftime(
     "%Y-%m-%d-%H-%M-%S"
 )  # default is current year-month-day-hours-minutes-seconds
@@ -27,6 +30,25 @@ DEFAULT_SAVE = True
 DEFAULT_SKIP_IF_EQUAL_TO_LAST = True
 
 DEFAULT_WORKERS = None  # if workers = None processes used will be equal to number of cores, override if needed.
+
+
+def make_backup_xlsx(filename):
+    """Make a backup of an xlsx file, appending _backup at the end of the filename. If file is corrupted, is copied as bytes with _backup_bytes at the end of the filename."""
+    if not os.path.exists(filename):
+        return
+    try:
+        wb = openpyxl.load_workbook(filename)
+        backup_filename = filename.replace(".xlsx", "_backup.xlsx")
+        wb.save(backup_filename)
+        return f"{filename} backed up to {backup_filename}"
+    except zipfile.BadZipFile:
+        backup_filename = filename.replace(".xlsx", "_backup_bytes.xlsx")
+        with open(filename, "rb") as f:
+            with open(backup_filename, "wb") as f2:
+                f2.write(f.read())
+                return (
+                    f"{filename} is corrupted, backed up as bytes to {backup_filename}"
+                )
 
 
 def divide_directory_and_path(path):
@@ -90,10 +112,12 @@ def dfs_are_equal(df, other_df):
     )
 
 
-def save_df(df, filename, sheet_name):
+def save_df(df, filename, sheet_name, mode="a"):
     kwargs = {}
-    if filename in os.listdir():
-        kwargs["mode"] = "a"
+    if mode not in ["a", "w"]:
+        raise ValueError(f"mode must be either 'a' or 'w', got {mode}")
+    kwargs["mode"] = mode
+    if mode == "a":
         kwargs["if_sheet_exists"] = "replace"
     with pd.ExcelWriter(filename, engine="openpyxl", **kwargs) as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name, float_format="%.2f")
@@ -111,6 +135,7 @@ def scrape(
     contracts_save_path="data/contracts_{}.xlsx",
     sheet_name=DEFAULT_SHEET_NAME,
     workers=DEFAULT_WORKERS,
+    backup=DEFAULT_BACKUP_FILES,
 ):
     year = parse_year_long(year)
     dummy_file_instance = namedtuple("dummy_file_instance", ["write", "close"])
@@ -162,28 +187,16 @@ def scrape(
     if compute_min_pts:
         try:
             print("Computing min_pts...", end="")
-            if (
-                "Contratto_sessione_straordinaria" in rank_df.columns
-                and "Specializzazione_sessione_straordinaria" in rank_df.columns
-                and "Sede_sessione_straordinaria" in rank_df.columns
-            ):
-                spec_column = "Specializzazione_sessione_straordinaria"
-                sede_column = "Sede_sessione_straordinaria"
-                contratto_column = "Contratto_sessione_straordinaria"
-
-            else:
-                spec_column = "Specializzazione"
-                sede_column = "Sede"
-                contratto_column = "Contratto"
-
-            clean_rank_df = rank_df[rank_df[spec_column].astype(bool)]
-
-            if "Exception" in clean_rank_df.columns:
-                clean_rank_df = clean_rank_df[~clean_rank_df.Exception.astype(bool)]
-            min_pts_df = clean_rank_df.groupby(
-                [spec_column, sede_column, contratto_column],
-                as_index=False,
-            ).aggregate({"#": "max", "Tot": "min"})
+            min_pts_df = (
+                rank_df[rank_df["Specializzazione"].astype(bool)]
+                .groupby(
+                    ["Specializzazione", "Sede", "Contratto"],
+                    as_index=False,
+                )
+                .aggregate({"#": "max", "Tot": "min"})[
+                    ["Specializzazione", "Sede", "Contratto", "#", "Tot"]
+                ]
+            )
             print("Done.")
         except Exception as e:
             print("")
@@ -217,87 +230,147 @@ def scrape(
         contracts_save_path = construct_path(
             contracts_save_path.format(parse_year_long(year))
         )
+        if backup:
+            esit = make_backup_xlsx(rank_save_path)
+            print(esit)
+            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
-            sheets = sorted(pd.ExcelFile(rank_save_path).sheet_names, reverse=True)
-            last_sheet_name = sheets[0]
-            last_df = pd.read_excel(rank_save_path, sheet_name=last_sheet_name)
-            equal = dfs_are_equal(rank_df, last_df)
-            if not equal:
-                save_df(rank_df, rank_save_path, sheet_name)
+            try:
+                # The file exists
+                sheets = sorted(pd.ExcelFile(rank_save_path).sheet_names, reverse=True)
+                last_sheet_name = sheets[0]
+                last_df = pd.read_excel(rank_save_path, sheet_name=last_sheet_name)
+                equal = dfs_are_equal(rank_df, last_df)
+                if not equal:
+                    save_df(rank_df, rank_save_path, sheet_name, mode="a")
+                    print(f"Saved {rank_save_path}>{sheet_name}.")
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
+                    )
+                else:
+                    print(
+                        f"Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now."
+                    )
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now.\n"
+                    )
+            except (zipfile.BadZipFile, ValueError):
+                print("File corrupted, overwriting...")
+                f.write(
+                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
+                )
+                save_df(rank_df, rank_save_path, sheet_name, mode="w")
                 print(f"Saved {rank_save_path}>{sheet_name}.")
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
                 )
-            else:
-                print(
-                    f"Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now."
-                )
-                f.write(
-                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now.\n"
-                )
         else:
-            save_df(rank_df, rank_save_path, sheet_name)
+            save_df(rank_df, rank_save_path, sheet_name, mode="w")
             print(f"Saved {rank_save_path}>{sheet_name}.")
             f.write(
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
             )
         if min_pts_df is not None:
+            if min_pts_df is not None:
+                esit = make_backup_xlsx(min_pts_save_path)
+                print(esit)
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
             if skip_if_equal_to_last and os.path.exists(min_pts_save_path):
-                sheets = sorted(
-                    pd.ExcelFile(min_pts_save_path).sheet_names, reverse=True
-                )
-                last_sheet_name = sheets[0]
-                last_df = pd.read_excel(min_pts_save_path, sheet_name=last_sheet_name)
-                equal = dfs_are_equal(min_pts_df, last_df)
-                if not equal:
-                    save_df(min_pts_df, min_pts_save_path, sheet_name)
-                    print(f"Saved {min_pts_save_path}>{sheet_name}.")
+                try:
+                    sheets = sorted(
+                        pd.ExcelFile(min_pts_save_path).sheet_names, reverse=True
+                    )
+                    last_sheet_name = sheets[0]
+                    last_df = pd.read_excel(
+                        min_pts_save_path, sheet_name=last_sheet_name
+                    )
+                    equal = dfs_are_equal(min_pts_df, last_df)
+                    if not equal:
+                        save_df(min_pts_df, min_pts_save_path, sheet_name, mode="a")
+                        print(f"Saved {min_pts_save_path}>{sheet_name}.")
 
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
+                        )
+                    else:
+                        print(
+                            f"Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now."
+                        )
+
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now.\n"
+                        )
+                except (zipfile.BadZipFile, ValueError):
+                    print("File corrupted, overwriting...")
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
+                    )
+                    save_df(min_pts_df, min_pts_save_path, sheet_name, mode="w")
+                    print(f"Saved {min_pts_save_path}>{sheet_name}.")
                     f.write(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
                     )
-                else:
-                    print(
-                        f"Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now."
-                    )
-
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now.\n"
-                    )
             else:
-                save_df(min_pts_df, min_pts_save_path, sheet_name)
+                save_df(min_pts_df, min_pts_save_path, sheet_name, mode="w")
                 print(f"Saved {min_pts_save_path}>{sheet_name}.")
-
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {min_pts_save_path}>{sheet_name}.\n"
                 )
         if number_of_contracts_df is not None:
+            if number_of_contracts_df is not None:
+                esit = make_backup_xlsx(contracts_save_path)
+                print(esit)
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
             if skip_if_equal_to_last and os.path.exists(contracts_save_path):
-                sheets = sorted(
-                    pd.ExcelFile(contracts_save_path).sheet_names, reverse=True
-                )
-                last_sheet_name = sheets[0]
-                last_df = pd.read_excel(contracts_save_path, sheet_name=last_sheet_name)
-                equal = dfs_are_equal(number_of_contracts_df, last_df)
-                if not equal:
-                    save_df(number_of_contracts_df, contracts_save_path, sheet_name)
-                    print(f"Saved {contracts_save_path}>{sheet_name}.")
+                try:
+                    sheets = sorted(
+                        pd.ExcelFile(contracts_save_path).sheet_names, reverse=True
+                    )
+                    last_sheet_name = sheets[0]
+                    last_df = pd.read_excel(
+                        contracts_save_path, sheet_name=last_sheet_name
+                    )
+                    equal = dfs_are_equal(number_of_contracts_df, last_df)
+                    if not equal:
+                        save_df(
+                            number_of_contracts_df,
+                            contracts_save_path,
+                            sheet_name,
+                            mode="a",
+                        )
+                        print(f"Saved {contracts_save_path}>{sheet_name}.")
 
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {contracts_save_path}>{sheet_name}.\n"
+                        )
+                    else:
+                        print(
+                            f"Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now."
+                        )
+
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now.\n"
+                        )
+                except (zipfile.BadZipFile, ValueError):
+                    print("File corrupted, overwriting...")
+                    f.write(
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
+                    )
+                    save_df(
+                        number_of_contracts_df,
+                        contracts_save_path,
+                        sheet_name,
+                        mode="w",
+                    )
+                    print(f"Saved {contracts_save_path}>{sheet_name}.")
                     f.write(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {contracts_save_path}>{sheet_name}.\n"
                     )
-                else:
-                    print(
-                        f"Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now."
-                    )
-
-                    f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now.\n"
-                    )
             else:
-                save_df(number_of_contracts_df, contracts_save_path, sheet_name)
+                save_df(
+                    number_of_contracts_df, contracts_save_path, sheet_name, mode="w"
+                )
                 print(f"Saved {contracts_save_path}>{sheet_name}.")
-
                 f.write(
                     f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {contracts_save_path}>{sheet_name}.\n"
                 )
@@ -394,6 +467,14 @@ def main():
         default="logs/trace_{}.log",
         help='Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "".',
     )
+    parser.add_argument(
+        "--no-backup",
+        action="store_const",
+        dest="backup",
+        default=DEFAULT_BACKUP_FILES,
+        const=not DEFAULT_BACKUP_FILES,
+        help="Do not backup files before overwriting them",
+    )
     args = parser.parse_args()
     config = vars(args)
     config["years"] = re.split(r"\D+", config["years_unsplitted"])
@@ -411,6 +492,7 @@ def main():
             min_pts_save_path=config["min_pts_output"],
             contracts_save_path=config["contracts_save_path"],
             trace_path=config["trace_output"],
+            backup=config["backup"],
         )
 
 

@@ -51,12 +51,15 @@ _Per poter visualizzare la graduatoria è necessario possedere un account univer
 
 4. Usage
 
-   <code>usage: ssm_rank_scraper.py [-h] -Y YEARS_UNSPLITTED [--skip-min-pts] [--sheet-name SHEET_NAME] [--no-save] [--no-skip] [-W WORKERS] [-O OUTPUT] [--min-pts-output MIN_PTS_OUTPUT] [--trace-output TRACE_OUTPUT]</code>
+   <code>usage: ssm_rank_scraper.py [-h] -Y YEARS_UNSPLITTED [--skip-min-pts] [--skip-number-of-contracts] [--sheet-name SHEET_NAME] [--no-save] [--no-skip] [-W WORKERS] [-O OUTPUT] [--min-pts-output MIN_PTS_OUTPUT] [--number-of-contract-output CONTRACTS_SAVE_PATH] [--trace-output TRACE_OUTPUT] [--no-backup]</code>
 
 ## Help
 
 ```
 Download the latest SSM rank. More info here: https://github.com/zenodallavalle/ssm-rank-scraper
+
+options:
+  Download the latest SSM rank. More info here: https://github.com/zenodallavalle/ssm-rank-scraper
 
 options:
   -h, --help            show this help message and exit
@@ -66,7 +69,7 @@ options:
   --skip-number-of-contracts
                         Skip download of number of contracts (default: True)
   --sheet-name SHEET_NAME
-                        Specify sheet name for excel output files (default: 2023-10-06-15-40-24)
+                        Specify sheet name for excel output files (default: 2023-10-26-19-27-03)
   --no-save             Skip saving output files (default: True)
   --no-skip             Do not skip saving files if last sheet is equal to current (default: True)
   -W WORKERS, --workers WORKERS
@@ -76,9 +79,12 @@ options:
   --min-pts-output MIN_PTS_OUTPUT
                         Specify min_pts output file name. It will be formatted with year (.format(year)). (default: data/min_pts_{}.xlsx)
   --number-of-contract-output CONTRACTS_SAVE_PATH
-                        Specify number_of_contracts output file name. It will be formatted with year (.format(year)). (default: data/contracts_{}.xlsx)
+                        Specify number_of_contracts output file name. It will be formatted with year (.format(year)). (default:
+                        data/contracts_{}.xlsx)
   --trace-output TRACE_OUTPUT
-                        Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "". (default: logs/trace_{}.log)
+                        Specify trace output file name. It will be formatted with year (.format(year)). To skip trace output use --trace-output "".
+                        (default: logs/trace_{}.log)
+  --no-backup           Do not backup files before overwriting them (default: True)
 ```
 
 ## Advanced
