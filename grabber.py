@@ -312,7 +312,7 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     df["CognomeNome"] = df["cognome_nome"].map(lambda x: x.rsplit("(", 1)[0].strip())
 
     exceptions = False
-    if df["#"].str.contains("*", regex=False).any():
+    if df["#"].astype(str).str.contains("*", regex=False).any():
         exceptions = True
         # It has some exceptions, so add a column to mark them and keep the number
         df["Exception"] = df["#"].str.contains("*", regex=False).replace({False: None})
