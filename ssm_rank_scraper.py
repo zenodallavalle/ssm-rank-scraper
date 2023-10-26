@@ -162,16 +162,28 @@ def scrape(
     if compute_min_pts:
         try:
             print("Computing min_pts...", end="")
-            min_pts_df = (
-                rank_df[rank_df["Specializzazione"].astype(bool)]
-                .groupby(
-                    ["Specializzazione", "Sede", "Contratto"],
-                    as_index=False,
-                )
-                .aggregate({"#": "max", "Tot": "min"})[
-                    ["Specializzazione", "Sede", "Contratto", "#", "Tot"]
-                ]
-            )
+            if (
+                "Contratto_sessione_straordinaria" in rank_df.columns
+                and "Specializzazione_sessione_straordinaria" in rank_df.columns
+                and "Sede_sessione_straordinaria" in rank_df.columns
+            ):
+                spec_column = "Specializzazione_sessione_straordinaria"
+                sede_column = "Sede_sessione_straordinaria"
+                contratto_column = "Contratto_sessione_straordinaria"
+
+            else:
+                spec_column = "Specializzazione"
+                sede_column = "Sede"
+                contratto_column = "Contratto"
+
+            clean_rank_df = rank_df[rank_df[spec_column].astype(bool)]
+
+            if "Exception" in clean_rank_df.columns:
+                clean_rank_df = clean_rank_df[~clean_rank_df.Exception.astype(bool)]
+            min_pts_df = clean_rank_df.groupby(
+                [spec_column, sede_column, contratto_column],
+                as_index=False,
+            ).aggregate({"#": "max", "Tot": "min"})
             print("Done.")
         except Exception as e:
             print("")

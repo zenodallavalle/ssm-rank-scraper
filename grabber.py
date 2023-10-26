@@ -11,12 +11,26 @@ from urllib.parse import urlparse, parse_qs
 import pandas as pd
 from bs4 import BeautifulSoup as BS
 
-from year_parser import parse_year_long, parse_year_short
+from year_parser import parse_year_long, parse_year_short, parse_year_int
 
 
 BASE_URL = "https://www.universitaly.it/"
 
-COLUMNS = ["#", "cognome_nome", "Tot", "Prova", "Titoli", "Stato", "Note"]
+
+def get_columns(year):
+    if parse_year_int(year) <= 2018:
+        return ["#", "cognome_nome", "Tot", "Prova", "Titoli", "Stato", "Note"]
+    else:
+        return [
+            "#",
+            "cognome_nome",
+            "Tot",
+            "Prova",
+            "Titoli",
+            "Stato",
+            "Note_sessione_straordinaria",
+            "Note_immatricolazione",
+        ]
 
 
 class AuthenticationLinkNotFound(IndexError):
@@ -169,13 +183,14 @@ def detect_limit(s, year, previdence_code):
     return max(map(_convert_option_text_to_integer, select.find_all("option")))
 
 
-def parse_data(tds):
+def parse_data(tds, year):
     """
     Parse data for every row in the page.
     Return a dictionary containing columns as keys and values scraped from the page.
     """
+    columns = get_columns(year=year)
     row = {}
-    for i, c in enumerate(COLUMNS):
+    for i, c in enumerate(columns):
         if i < 5:
             try:
                 row[c] = float(tds[i].text.replace(",", "."))
@@ -189,16 +204,18 @@ def parse_data(tds):
             if not value:
                 value = span.text.strip()
             row[c] = value
-        elif i == 6:
+        elif i >= 6:
             if len(tds) < 7:
                 row[c] = ""
                 continue
             span = tds[i].find("span")
             if span is not None:
                 children = list(span.children)
-                row[c] = children[0].strip()
+                text = children[0].strip()
+                row[c] = text
+                type_of_c = c.split("_")[0]
                 if len(children) == 1:
-                    row["Contratto"] = "STAT"
+                    row[f"Contratto_{type_of_c}"] = "STAT"
                 else:
                     contract = children[1].text.strip().upper()
                     if (
@@ -206,11 +223,14 @@ def parse_data(tds):
                         or len(contract) == 1
                         or emoji.emoji_count(contract)
                     ):
-                        contract = children[1].attrs["title"].strip()
-                    row["Contratto"] = contract
+                        contract = children[1].attrs.get("title", None)
+                        if contract:
+                            contract = contract.strip()
+                    row[f"Contratto_{type_of_c}"] = contract
 
             else:
-                row[c] = tds[i].text.strip()
+                text = tds[i].text.strip()
+                row[c] = text
         else:
             row[c] = tds[i].text.strip()
     return row
@@ -226,18 +246,6 @@ def parse_birthday(x):
         return d(datetime.year, datetime.month, datetime.day)
     except Exception:
         return
-
-
-def parse_specializzazione_sede(df):
-    """
-    Parse df['Note'] in order to extract specializzazione - sede combination (a tuple). If error occurs None is returned.
-    """
-    x = df["Note"]
-    try:
-        specializzazione, sede = x.rsplit(",", 1)
-        return specializzazione.strip(), sede.strip()
-    except Exception:
-        return None, None
 
 
 def scan_page(
@@ -260,13 +268,16 @@ def scan_page(
     bs = BS(r.content, "lxml")
     trs = bs.find_all("tr")
     rows = []
-    if len(trs) < 2:
-        return empty_page_callback()
-    for tr in trs:
-        tds = tr.findChildren("td")
-        if len(tds) > 0:
-            rows.append(parse_data(tds))
-
+    try:
+        if len(trs) < 2:
+            return empty_page_callback()
+        for i, tr in enumerate(trs):
+            tds = tr.findChildren("td")
+            if len(tds) > 0:
+                rows.append(parse_data(tds, year))
+    except Exception as e:
+        print(f"Error while parsing page {n}, tr: {i}, {e}")
+        raise e
     return pd.DataFrame(rows)
 
 
@@ -299,30 +310,89 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     # generate column birth from date within parenthesis
     df["Nascita"] = df["cognome_nome"].map(parse_birthday)
     df["CognomeNome"] = df["cognome_nome"].map(lambda x: x.rsplit("(", 1)[0].strip())
-    df["Note"] = df["Note"].astype(str)
 
-    df["#"] = df["#"].astype(int)
+    exceptions = False
+    if df["#"].str.contains("*", regex=False).any():
+        exceptions = True
+        # It has some exceptions, so add a column to mark them and keep the number
+        df["Exception"] = df["#"].str.contains("*", regex=False).replace({False: None})
+        df["#"] = (
+            df["#"].replace({"(*)": np.nan}).fillna(df["#"].shift(1)).add(1).astype(int)
+        )
+    else:
+        df["#"] = df["#"].astype(int)
+    # Sort by #
     df = df.sort_values(by=["#"])
 
     df = df.reset_index(drop=True)
 
-    df[["Specializzazione", "Sede"]] = df.apply(
-        parse_specializzazione_sede, axis=1, result_type="expand"
-    )
+    if parse_year_int(year) <= 2018:
+        df["Note"] = df["Note"].astype(str)
+        df[["Specializzazione", "Sede"]] = (
+            df["Note"].astype(str).str.rsplit(",", n=1, expand=True)
+        )
+        df["Specializzazione"] = df["Specializzazione"].str.strip()
+        df["Sede"] = df["Sede"].str.strip()
+        cols = [
+            "#",
+            "CognomeNome",
+            "Nascita",
+            "Tot",
+            "Prova",
+            "Titoli",
+            "Stato",
+            "Contratto",
+            "Specializzazione",
+            "Sede",
+            "Note",
+        ]
+    else:
+        cols = [
+            "#",
+            "CognomeNome",
+            "Nascita",
+            "Tot",
+            "Prova",
+            "Titoli",
+            "Stato",
+            "Contratto_sessione_straordinaria",
+            "Specializzazione_sessione_straordinaria",
+            "Sede_sessione_straordinaria",
+            "Contratto_sessione_immatricolazione",
+            "Specializzazione_immatricolazione",
+            "Sede_immatricolazione",
+            "Note_sessione_straordinaria",
+            "Note_immatricolazione",
+        ]
+        df[
+            ["Specializzazione_sessione_straordinaria", "Sede_sessione_straordinaria"]
+        ] = (
+            df["Note_sessione_straordinaria"]
+            .astype(str)
+            .str.rsplit(",", n=1, expand=True)
+        )
+        df["Specializzazione_sessione_straordinaria"] = df[
+            "Specializzazione_sessione_straordinaria"
+        ].str.strip()
+        df["Sede_sessione_straordinaria"] = df[
+            "Sede_sessione_straordinaria"
+        ].str.strip()
 
-    cols = [
-        "#",
-        "CognomeNome",
-        "Nascita",
-        "Tot",
-        "Prova",
-        "Titoli",
-        "Stato",
-        "Contratto",
-        "Specializzazione",
-        "Sede",
-        "Note",
-    ]
+        df[["Specializzazione_immatricolazione", "Sede_immatricolazione"]] = (
+            df["Note_immatricolazione"]
+            .astype(str)
+            .str.replace(
+                "Medicina d'emergenza-urgenza", "Medicina d'emergenza$urgenza"
+            )  # Replace - in specializations with $ to avoid splitting, remember to add new specializations with - here
+            .str.replace("Chirurgia maxillo-facciale", "Chirurgia maxillo$facciale")
+            .str.split("-", n=1, expand=True)
+        )
+        df["Specializzazione_immatricolazione"] = (
+            df["Specializzazione_immatricolazione"].str.replace("$", "-").str.strip()
+        )
+        df["Sede_immatricolazione"] = df["Sede_immatricolazione"].str.strip()
+    if exceptions:
+        cols.insert(1, "Exception")
     for col in cols:
         if col not in df.columns:
             df[col] = np.nan
@@ -332,6 +402,7 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     # rename index col "index"
     df = df.rename_axis(["index"], axis=1)
     df = df.replace([np.nan, ""], [None, None])
+
     return df
 
 

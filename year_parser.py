@@ -15,7 +15,7 @@ def parse_year_long(year):
     if not isinstance(year, str):
         year = str(year)
     if len(year) == 2:
-        return f'20{year}'
+        return f"20{year}"
     elif len(year) == 4:
         return year
     else:
@@ -31,3 +31,7 @@ def parse_year_short(year):
         return year[2:4]
     else:
         raise UnrecognizedYearError(year)
+
+
+def parse_year_int(year):
+    return int(parse_year_long(year))
