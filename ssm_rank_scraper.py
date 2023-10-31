@@ -40,7 +40,7 @@ def make_backup_xlsx(filename):
         backup_filename = filename.replace(".xlsx", "_backup.xlsx")
         wb.save(backup_filename)
         return f"{filename} backed up to {backup_filename}"
-    except zipfile.BadZipFile:
+    except Exception:
         backup_filename = filename.replace(".xlsx", "_backup_bytes.xlsx")
         with open(filename, "rb") as f:
             with open(backup_filename, "wb") as f2:
@@ -55,8 +55,8 @@ def get_worksheets_names(filename):
     try:
         wb = openpyxl.load_workbook(filename)
         return wb.sheetnames
-    except zipfile.BadZipFile:
-        return
+    except Exception:
+        raise ValueError("Bad file")
 
 
 def divide_directory_and_path(path):
@@ -113,11 +113,18 @@ def load_credentials(year):
 
 
 def dfs_are_equal(df, other_df):
-    return (
-        df.shape == other_df.shape
-        and ((df != other_df) & (df.notnull()) & (other_df.notnull())).any(axis=1).sum()
-        == 0
-    )
+    try:
+        return (
+            df.shape == other_df.shape
+            and not any(map(lambda df_col: df_col not in other_df.columns, df.columns))
+            and ((df != other_df) & (df.notnull()) & (other_df.notnull()))
+            .any(axis=1)
+            .sum()
+            == 0
+        )
+    except Exception as e:
+        print(e)
+        return False
 
 
 def save_df(df, filename, sheet_name, mode="a"):
@@ -277,10 +284,10 @@ def scrape(
                     f.write(
                         f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving rank as last_sheet ({last_sheet_name}) does not differ from now.\n"
                     )
-            except (zipfile.BadZipFile, ValueError):
-                print("File corrupted, overwriting...")
+            except (zipfile.BadZipFile, ValueError) as e:
+                print(f"Error, {e}. File corrupted, overwriting...")
                 f.write(
-                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
+                    f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error, {e}. File corrupted, overwriting...\n"
                 )
                 if backup:
                     esit = make_backup_xlsx(rank_save_path)
@@ -340,10 +347,10 @@ def scrape(
                         f.write(
                             f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving min_pts as last_sheet ({last_sheet_name}) does not differ from now.\n"
                         )
-                except (zipfile.BadZipFile, ValueError):
-                    print("File corrupted, overwriting...")
+                except (zipfile.BadZipFile, ValueError) as e:
+                    print(f"Error, {e}. File corrupted, overwriting...")
                     f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error, {e}. File corrupted, overwriting...\n"
                     )
                     if backup:
                         esit = make_backup_xlsx(min_pts_save_path)
@@ -408,10 +415,10 @@ def scrape(
                         f.write(
                             f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Skipped saving contracts as last_sheet ({last_sheet_name}) does not differ from now.\n"
                         )
-                except (zipfile.BadZipFile, ValueError):
-                    print("File corrupted, overwriting...")
+                except (zipfile.BadZipFile, ValueError) as e:
+                    print(f"Error, {e}. File corrupted, overwriting...")
                     f.write(
-                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - File corrupted, overwriting...\n"
+                        f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Error, {e}. File corrupted, overwriting...\n"
                     )
                     if backup:
                         esit = make_backup_xlsx(contracts_save_path)
