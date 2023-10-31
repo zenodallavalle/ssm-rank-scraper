@@ -50,6 +50,15 @@ def make_backup_xlsx(filename):
                 )
 
 
+def get_worksheets_names(filename):
+    """Get worksheets names of an xlsx file"""
+    try:
+        wb = openpyxl.load_workbook(filename)
+        return wb.sheetnames
+    except zipfile.BadZipFile:
+        return
+
+
 def divide_directory_and_path(path):
     path = re.sub(r"^(/|\\)", "", path)  # Remove leading slash or backslash
     # path = re.sub(r'(/|\\)$', '', path) # Remove trailing slash or backslash
@@ -244,7 +253,7 @@ def scrape(
         if skip_if_equal_to_last and os.path.exists(rank_save_path):
             try:
                 # The file exists
-                sheets = sorted(pd.ExcelFile(rank_save_path).sheet_names, reverse=True)
+                sheets = sorted(get_worksheets_names(rank_save_path), reverse=True)
                 last_sheet_name = sheets[0]
                 last_df = pd.read_excel(rank_save_path, sheet_name=last_sheet_name)
                 equal = dfs_are_equal(rank_df, last_df)
@@ -277,7 +286,9 @@ def scrape(
                     esit = make_backup_xlsx(rank_save_path)
                     if isinstance(esit, str):
                         print(esit)
-                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n")
+                        f.write(
+                            f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - {esit}\n"
+                        )
                 save_df(rank_df, rank_save_path, sheet_name, mode="w")
                 print(f"Saved {rank_save_path}>{sheet_name}.")
                 f.write(
@@ -300,7 +311,7 @@ def scrape(
             if skip_if_equal_to_last and os.path.exists(min_pts_save_path):
                 try:
                     sheets = sorted(
-                        pd.ExcelFile(min_pts_save_path).sheet_names, reverse=True
+                        get_worksheets_names(min_pts_save_path), reverse=True
                     )
                     last_sheet_name = sheets[0]
                     last_df = pd.read_excel(
@@ -363,7 +374,7 @@ def scrape(
             if skip_if_equal_to_last and os.path.exists(contracts_save_path):
                 try:
                     sheets = sorted(
-                        pd.ExcelFile(contracts_save_path).sheet_names, reverse=True
+                        get_worksheets_names(contracts_save_path), reverse=True
                     )
                     last_sheet_name = sheets[0]
                     last_df = pd.read_excel(
