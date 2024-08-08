@@ -105,9 +105,9 @@ def load_credentials(year):
         )
         authentication_link = grabber.get_authentication_link(email, password, year)
     with open("credentials.json", "w") as f:
-        cred[
-            "authentication_link_{}".format(parse_year_long(year))
-        ] = authentication_link
+        cred["authentication_link_{}".format(parse_year_long(year))] = (
+            authentication_link
+        )
         json.dump(cred, f)
     return authentication_link
 
@@ -315,7 +315,9 @@ def scrape(
                 f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] - Saved {rank_save_path}>{sheet_name}.\n"
             )
         if min_pts_df is not None:
-            if skip_if_equal_to_last and os.path.exists(min_pts_save_path):
+            if min_pts_df.empty:
+                print('Skipping saving min_pts as "min_pts_df" is empty.')
+            elif skip_if_equal_to_last and os.path.exists(min_pts_save_path):
                 try:
                     sheets = sorted(
                         get_worksheets_names(min_pts_save_path), reverse=True
