@@ -191,7 +191,10 @@ def parse_data(tds, year):
     columns = get_columns(year=year)
     row = {}
     for i, c in enumerate(columns):
-        if i < 5:
+        if len(tds) <= i:
+            row[c] = None
+            continue
+        elif i < 5:
             try:
                 row[c] = float(tds[i].text.replace(",", "."))
             except ValueError:
@@ -295,17 +298,22 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     # detect limit
     upper_limit = detect_limit(s, year, previdence_code)
 
-    with Pool(workers) as p:
-        dfs = p.starmap(
-            scan_page,
-            zip(
-                repeat(s),
-                repeat(year),
-                repeat(previdence_code),
-                range(1, upper_limit + 1),
-            ),
-        )
-        df = pd.concat([df for df in dfs if isinstance(df, pd.DataFrame)])
+    if workers > 1:
+        with Pool(workers) as p:
+            dfs = p.starmap(
+                scan_page,
+                zip(
+                    repeat(s),
+                    repeat(year),
+                    repeat(previdence_code),
+                    range(1, upper_limit + 1),
+                ),
+            )
+    else:
+        dfs = [
+            scan_page(s, year, previdence_code, i) for i in range(1, upper_limit + 1)
+        ]
+    df = pd.concat([df for df in dfs if isinstance(df, pd.DataFrame)])
 
     # generate column birth from date within parenthesis
     df["Nascita"] = df["cognome_nome"].map(parse_birthday)
@@ -378,7 +386,7 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
             "Sede_sessione_straordinaria"
         ].str.strip()
 
-        df[["Specializzazione_immatricolazione", "Sede_immatricolazione"]] = (
+        tmp = (
             df["Note_immatricolazione"]
             .astype(str)
             .str.replace(
@@ -391,12 +399,17 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
             )
             .str.split("-", n=1, expand=True, regex=False)
         )
-        df["Specializzazione_immatricolazione"] = (
-            df["Specializzazione_immatricolazione"]
-            .str.replace("$", "-", regex=False)
-            .str.strip()
-        )
-        df["Sede_immatricolazione"] = df["Sede_immatricolazione"].str.strip()
+        if tmp.shape[1] == 2:
+            df[["Specializzazione_immatricolazione", "Sede_immatricolazione"]] = tmp
+            df["Specializzazione_immatricolazione"] = (
+                df["Specializzazione_immatricolazione"]
+                .str.replace("$", "-", regex=False)
+                .str.strip()
+            )
+            df["Sede_immatricolazione"] = df["Sede_immatricolazione"].str.strip()
+        else:
+            df["Specializzazione_immatricolazione"] = None
+            df["Sede_immatricolazione"] = None
     if exceptions:
         cols.insert(1, "Exception")
 
