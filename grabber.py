@@ -203,9 +203,12 @@ def parse_data(tds, year):
                 )
         elif i == 5:
             span = tds[i].find("span")
-            value = span.attrs.get("title", None)
-            if not value:
-                value = span.text.strip()
+            if span is None:
+                value = ""
+            else:
+                value = span.attrs.get("title", None)
+                if not value:
+                    value = span.text.strip()
             row[c] = value
         elif i >= 6:
             if len(tds) < 7:
