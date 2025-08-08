@@ -161,10 +161,15 @@ def authenticate(authentication_link=None, session=None):
 def gen_url_paged(year, n, previdence_code):
     """
     Takes ranking year and number of page and return a string of the url you need to get to access that data.
+    Since 2025 the url has changed: https://ssm.cineca.it/ssm{short_year}/graduatoria.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}
+    Before 2025 is: https://ssm.cineca.it/ssm17-24/ssm{short_year}_graduatoria.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}
     """
     short_year = parse_year_short(year)
     long_year = parse_year_long(year)
-    BASE = f"https://ssm.cineca.it/ssm{short_year}_graduatoria.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
+    if int(long_year) < 2025:
+        BASE = f"https://ssm.cineca.it/ssm17-24/ssm{short_year}_graduatoria.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
+    else:
+        BASE = f"https://ssm.cineca.it/ssm{short_year}/graduatoria.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
     return BASE + f"&page={n}"
 
 
@@ -338,12 +343,6 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     df = df.reset_index(drop=True)
 
     if parse_year_int(year) <= 2018:
-        df["Note"] = df["Note"].astype(str)
-        df[["Specializzazione", "Sede"]] = (
-            df["Note"].astype(str).str.rsplit(",", n=1, expand=True)
-        )
-        df["Specializzazione"] = df["Specializzazione"].str.strip()
-        df["Sede"] = df["Sede"].str.strip()
         cols = [
             "#",
             "CognomeNome",
@@ -357,6 +356,17 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
             "Sede",
             "Note",
         ]
+        df = df.reindex(columns=cols)
+        df["Note"] = df["Note"].astype(str)
+        try:
+            df[["Specializzazione", "Sede"]] = (
+                df["Note"].astype(str).str.rsplit(",", n=1, expand=True)
+            )
+            df["Specializzazione"] = df["Specializzazione"].str.strip()
+            df["Sede"] = df["Sede"].str.strip()
+        except ValueError:
+            pass
+
     else:
         cols = [
             "#",
@@ -375,19 +385,26 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
             "Note_sessione_straordinaria",
             "Note_immatricolazione",
         ]
-        df[
-            ["Specializzazione_sessione_straordinaria", "Sede_sessione_straordinaria"]
-        ] = (
-            df["Note_sessione_straordinaria"]
-            .astype(str)
-            .str.rsplit(",", n=1, expand=True)
-        )
-        df["Specializzazione_sessione_straordinaria"] = df[
-            "Specializzazione_sessione_straordinaria"
-        ].str.strip()
-        df["Sede_sessione_straordinaria"] = df[
-            "Sede_sessione_straordinaria"
-        ].str.strip()
+        df = df.reindex(columns=cols)
+        try:
+            df[
+                [
+                    "Specializzazione_sessione_straordinaria",
+                    "Sede_sessione_straordinaria",
+                ]
+            ] = (
+                df["Note_sessione_straordinaria"]
+                .astype(str)
+                .str.rsplit(",", n=1, expand=True)
+            )
+            df["Specializzazione_sessione_straordinaria"] = df[
+                "Specializzazione_sessione_straordinaria"
+            ].str.strip()
+            df["Sede_sessione_straordinaria"] = df[
+                "Sede_sessione_straordinaria"
+            ].str.strip()
+        except ValueError:
+            pass
 
         tmp = (
             df["Note_immatricolazione"]
@@ -416,12 +433,6 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
     if exceptions:
         cols.insert(1, "Exception")
 
-    for col in cols:
-        if col not in df.columns:
-            df[col] = np.nan
-
-    df = df[cols]
-
     # rename index col "index"
     df = df.rename_axis(["index"], axis=1)
     df = df.replace([np.nan, ""], [None, None])
@@ -430,9 +441,16 @@ def grab(year, email=None, password=None, authentication_link=None, workers=None
 
 
 def _get_number_of_contract_url(year, previdence_code):
+    """
+    Since 2025 the url has changed: https://ssm.cineca.it/ssm{short_year}/riepilogo.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}
+    Before 2025 is: https://ssm.cineca.it/ssm17-24/ssm{short_year}_riepilogo.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}
+    """
     short_year = parse_year_short(year)
     long_year = parse_year_long(year)
-    return f"https://ssm.cineca.it/ssm{short_year}_riepilogo.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
+    if int(long_year) < 2025:
+        return f"https://ssm.cineca.it/ssm17-24/ssm{short_year}_riepilogo.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
+    else:
+        return f"https://ssm.cineca.it/ssm{short_year}/riepilogo.php?user=MEM{previdence_code}_{short_year}&year_ssm={long_year}"
 
 
 def download_number_of_contracts(
